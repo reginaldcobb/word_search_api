@@ -1,0 +1,141 @@
+# Windows
+py -3 -m venv .venv 
+.venv\scripts\activate
+
+# In Linux
+python3 -m venv .venv
+source .venv/bin/activate
+
+#INSTALLING DJANGO
+
+python -m pip install --upgrade pip
+
+python -m pip install django
+
+python -m django --version
+
+
+Requirements File
+After installing your required libraries, you can view all installed libraries by using pip list, or you can generate a text file listing all your project dependencies by running the code below:
+
+pip freeze > requirements.txt
+
+How to Deactivate a Virtual Environment
+To deactivate your virtual environment, simply run the following code in the terminal:
+
+ ~ deactivate
+
+###################
+for Django and React
+
+python -m pip install django djangorestframework
+
+django-admin startproject music_controller .
+cd music_controller 
+django-admin startapp api  
+
+# update the model database or initialize db
+python .\manage.py makemigrations 
+python .\manage.py migrate
+
+python .\manage.py runserver
+
+###################
+
+django-admin startproject web_project .
+
+python manage.py migrate
+
+. env/bin/activate 
+deactivate
+
+
+###################
+Django Deployment to FastComet
+
+#install using instructions at this site
+ref: https://pythonfusion.com/deploy-django-on-shared-hosting/
+
+#install Django
+pip install Django
+
+#install MYSQL
+pip install pymysql
+
+#make Django migrations
+python manage.py makemigrations
+
+###################
+#FLASK
+
+mkdir myproject
+cd myproject
+py -3 -m venv .venv
+
+.venv\Scripts\activate
+
+pip install Flask
+
+flask --app wordsearch --debug run 
+
+#Run the init-db command:
+flask --app flaskr init-db
+
+
+#Make the Flask Project Installable
+
+
+###################
+#Clone the Github repository
+git clone --recursive https://github.com/reginaldcobb/spotify-django.git
+Username: reginaldcobb@gmail.com
+Password: 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
+
+
+######################
+Azure
+
+rcobb
+20.231.14.10
+
+setup nginx and gunicorn
+https://www.youtube.com/watch?v=KWIIPKbdxD0&t=140s
+
+source ~/env/teton/bin/activate
+
+gunicorn --bind 0.0.0.0:5000 wsgi:app
+
+sudo nano /etc/nginx/sites-available/peak.conf
+
+sudo ls -s /etc//nginx/sites-available/peak.conf /etc/nginx/sites-enabled/
+
+sudo systemctl restart nginx
+
+##############################
+Removing Directories
+
+rm -r directory_name_or_path
+
+#######################################
+#Poetry Tutorial
+
+deactivate 
+# Windows
+py -3 -m venv .venv 
+.venv\scripts\activate
+
+pip install poetry
+
+poetry install
+
+
+poetry run python app/main.py
+
+
+uvicorn --reload --host 0.0.0.0 --port 8001 app.main:app 
+
+#######################################
+FASTAPI
+
+pip install "fastapi[all]"     
+uvicorn main:app --reload   
