@@ -1,9 +1,11 @@
 from enum import Enum
 import os
 import random
+import json
 
-from fastapi import FastAPI, File, UploadFile, Request
+from fastapi import FastAPI, File, UploadFile, Request, Form
 from fastapi.responses import FileResponse, HTMLResponse
+from fastapi.staticfiles import StaticFiles
 
 from fastapi.templating import Jinja2Templates
 
@@ -45,19 +47,48 @@ class WordSearchModel(BaseModel):
 # Create a Jinja2Templates instance for rendering HTML templates
 templates = Jinja2Templates(directory="templates")
 
-# Define the path to the static folder
 static_folder = "static"
 
+# Mount the static directory
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
 # Check if the static folder exists, and create it if not
-if not os.path.exists(static_folder):
-    os.makedirs(static_folder)
+# if not os.path.exists(static_folder):
+#     os.makedirs(static_folder)
 
+@app.get("/")
+async def index(request: Request):
+    return templates.TemplateResponse("create_wordsearch.html", {"request": request})
 
-@app.get("/file_links", response_class=HTMLResponse)
-async def file_links(request: Request):
+@app.get("/get_file_links")
+async def get_file_links():
+    file1_link = "/static/docx-out.docx"
+    file2_link = "/static/docx-out_solution.docx"
+    file3_link = "/static/svg_out.svg"
+    file4_link = "/static/svg_out_solution.svg"
+    file5_link = "/static/text_out.txt"
+    file6_link = "/static/text_out_solution.txt"
+
+    # Create a dictionary with file paths
+    file_paths = {
+        "Word Search Puzzle Solution - MS Word version": file1_link,
+        "Word Search Puzzle - MS Word version": file2_link,
+        "Word Search Puzzle Solution - SVG version": file3_link,
+        "Word Search Puzzle - SVG version": file4_link,
+        "Word Search Puzzle Solution - Text version": file5_link,
+        "Word Search Puzzle - Text version": file6_link
+    }
+
+    # Serialize the dictionary to JSON
+    response_data = json.dumps(file_paths)
+
+    return response_data
+
+@app.get("/get_files", response_class=HTMLResponse)
+async def get_files(request: Request):
     # Define the links to the files
     # file1_link = "/static/docx-out.docx"
-    file1_link = f"static/docx-out.docx"
+    file1_link = f"/static/docx-out.docx"
     print("file1_link=", file1_link)
     file2_link = "/static/docx-out_solution.docx"
     file3_link = "/static/svg_out.svg"
@@ -77,7 +108,7 @@ async def file_links(request: Request):
     })
 
 @app.get("/get_wordsearch")
-async def create_wordsearch():  
+async def get_wordsearch():  
     files_to_return = []
 
     # List of file extensions you want to include
@@ -93,20 +124,8 @@ async def create_wordsearch():
     responses = [FileResponse(file_path) for file_path in files_to_return]
     return responses
 
-
 @app.post("/create_wordsearch")
 async def create_wordsearch(data: WordSearchModel ):    
-    # Read in words from file or from list
-    # if data.input == WordInputType.file:
-    #     words = []
-    #     pass
-        # if word_file:
-        #     async for line in word_file:
-        #         line_str = line.decode('utf-8').strip()
-        #         line_words = line_str.split(',')
-        #         words.extend(line_words)
-        # else:
-        #     return 'File selected but No file uploaded', 400
 
     # Set config variables
     docx_output_file = "docx-out.docx"
@@ -122,17 +141,18 @@ async def create_wordsearch(data: WordSearchModel ):
     font_blue_value = "0x00"
 
     # Generate the grids
-    grids = generate_puzzle(data.word_list, data.row, data.column, data.title.text, data.title.align, data.title.position)
+    # grids = generate_puzzle(data.word_list, data.row, data.column, data.title.text, data.title.align, data.title.position)
+    grids = generate_puzzle(data.word_list, data.row, data.column)
     
     print_docx(data.word_list, grids[0], grids[1], docx_output_file, docx_output_solution_file,  data.row, data.column, data.title.text,
-            data.title.position, data.title.align,  font_type, font_size, font_red_value, font_green_value, font_blue_value)
+           data.title.align, data.title.position, font_type, font_size, font_red_value, font_green_value, font_blue_value)
 
     # Print the SVG version of the puzzles
-    print_svg(data.word_list, grids[0], grids[1], svg_output_file, svg_output_solution_file, data.row, data.column)
+    print_svg(data.word_list, grids[0], grids[1], svg_output_file, svg_output_solution_file, data.row, data.column, data.title.text, data.title.align, data.title.position)
 
     # Print the Text version of the puzzles
     print_text(data.word_list, grids[0], grids[1], text_output_file,
-            text_output_solution_file, data.row, data.column)
+            text_output_solution_file, data.row, data.column, data.title.text, data.title.align, data.title.position)
 
     return {
         "input": data.input,
@@ -143,8 +163,7 @@ async def create_wordsearch(data: WordSearchModel ):
         "title": data.title.model_dump() if data.title else None,
     }
 
-
-def generate_puzzle(words, rows, cols, title, title_align, title_pos):
+def generate_puzzle(words, rows, cols):
 
     directions = []
 
@@ -238,7 +257,7 @@ def generate_puzzle(words, rows, cols, title, title_align, title_pos):
 
     return [grid, placed_grid]
 
-def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, rows, cols):
+def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, rows, cols, title, align, position):
 
     width = len(grid[0])
     height = len(grid)
@@ -257,13 +276,36 @@ def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, row
         f.write(
             # Make svg display area larger to accomodate words below the puzzle
             f'<svg xmlns="http://www.w3.org/2000/svg" width="{width * cell_size*2}" height="{height * cell_size *2}">\n')
+        if (position == PositionType.top):
+            match align:
+                case AlignType.left:
+                    x = 2
+                    y=0  
+                    print ("left", x, len(title))
+                case AlignType.middle:
+                    x = (width)/2  - ((len(title)-1)/2)
+                    # x=2
+                    y=0
+                    print ("middle", x, len(title))
+                case AlignType.right:
+                    x = ((width)) - ((len(title)/2-1))
+                    y=0
+                    print ("right", x, (len(title)))
+                case _:
+                    pass
+      
+            # write the title
+            # f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+
+            # f.write(f'\t<text x="{x * (cell_size + cell_size / 2)}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight = "900">{title}</text>\n')
+            # f.write(f'\t<text x="{x * cell_size }" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight = "900">{title}</text>\n')
 
         for y in range(height):
             for x in range(width):
                 f.write(
-                    f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    f'\t<rect x="{x * cell_size}" y="{(y+1) * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
                 f.write(
-                    f'\t<text x="{x * cell_size + cell_size / 2}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black">{grid[y][x]}</text>\n')
+                    f'\t<text x="{x * cell_size + cell_size / 2}" y="{(y+1) * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black">{grid[y][x]}</text>\n')
 
         # Loop over the words and add them to the SVG file
         for i, word in enumerate(words):
@@ -280,6 +322,7 @@ def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, row
         solution.write(
             # Make svg display area larger to accomodate words below the puzzle
             f'<svg xmlns="http://www.w3.org/2000/svg" width="{width * cell_size*2}" height="{height * cell_size*2}">\n')
+        
         for y in range(height):
             for x in range(width):
                 if (placed_grid[y][x]) == '%':
@@ -308,7 +351,7 @@ def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, row
 
     return [svg_file, svg_solution_file]
 
-def print_docx(words, grid, placed_grid, docx_filename, docx_filename_solution, width, height, puzzle_title, puzzle_title_position, puzzle_title_align, font_type, font_size, red, green, blue):
+def print_docx(words, grid, placed_grid, docx_filename, docx_filename_solution, width, height, title, align, position,  font_type, font_size, red, green, blue):
 
     mydoc = Document()
     mydoc_docx = mydoc.add_paragraph()
@@ -326,22 +369,22 @@ def print_docx(words, grid, placed_grid, docx_filename, docx_filename_solution, 
             longest_word = word
 
     # Check how title is aliigned
-    if (puzzle_title_align == AlignType.left):
+    if (align == AlignType.left):
         title_space = 0
-    elif (puzzle_title_align == AlignType.right):
-        title_space = int((int(height)*2 - len(puzzle_title) - 1))
+    elif (align == AlignType.right):
+        title_space = int((int(height)*2 - len(title) - 1))
     else:
-        title_space = int((int(height)*2 - len(puzzle_title)) / 2)
+        title_space = int((int(height)*2 - len(title)) / 2)
 
     # Check if Print at TOP or BOTTOM
-    if (puzzle_title_position == PositionType.top):
+    if (position == PositionType.top):
         # Print the Title First
 
         for i in range(title_space):
             doc = mydoc_docx.add_run(" ")
 
         # print Title
-        doc = mydoc_docx.add_run(puzzle_title)
+        doc = mydoc_docx.add_run(title)
         doc = mydoc_docx.add_run("\n")
 
     for x in range(width):
@@ -351,14 +394,14 @@ def print_docx(words, grid, placed_grid, docx_filename, docx_filename_solution, 
             doc = mydoc_docx.add_run(" ")
         doc = mydoc_docx.add_run("\n")
 
-    if (puzzle_title_position == PositionType.bottom):
-        # Print the Title First
+    if (position == PositionType.bottom):
+        # Print the Title Last
 
         for i in range(title_space):
             doc = mydoc_docx.add_run(" ")
 
             # print Title
-        doc = mydoc_docx.add_run(puzzle_title)
+        doc = mydoc_docx.add_run(title)
         doc = mydoc_docx.add_run("\n")
 
     # Define the number of columns and rows
@@ -391,14 +434,14 @@ def print_docx(words, grid, placed_grid, docx_filename, docx_filename_solution, 
     # mydoc.add_page_break()
 
     # Check if Print at TOP or BOTTOM
-    if (puzzle_title_position == PositionType.top):
+    if (position == PositionType.top):
         # Print the Title First
 
         for i in range(title_space):
             doc = mydoc_docx.add_run(" ")
 
             # print Title
-        doc = mydoc_docx.add_run(puzzle_title)
+        doc = mydoc_docx.add_run(title)
         doc = mydoc_docx.add_run("\n")
 
     for x in range(width):
@@ -413,13 +456,13 @@ def print_docx(words, grid, placed_grid, docx_filename, docx_filename_solution, 
             doc = mydoc_docx.add_run(" ")
         doc = mydoc_docx.add_run("\n")
 
-    if (puzzle_title_position == PositionType.bottom):
+    if (position == PositionType.bottom):
         # Print the Title First
         for i in range(title_space):
             doc = mydoc_docx.add_run(" ")
 
         # print Title
-        doc = mydoc_docx.add_run(puzzle_title)
+        doc = mydoc_docx.add_run(title)
         doc = mydoc_docx.add_run("\n")
 
     # Define the number of columns and rows
@@ -440,8 +483,7 @@ def print_docx(words, grid, placed_grid, docx_filename, docx_filename_solution, 
     filename = os.path.join(static_folder, docx_filename_solution)
     mydoc_solution.save(filename)
 
-
-def print_text(words, grid, placed_grid, text_filename, test_solution_filename, rows, cols):
+def print_text(words, grid, placed_grid, text_filename, test_solution_filename, rows, cols, title, align, position):
 
     words.sort()
     longest_word = ''
@@ -459,14 +501,41 @@ def print_text(words, grid, placed_grid, text_filename, test_solution_filename, 
     num_columns = 3
     col_buffer = 4
 
+    # Check how title is aliigned
+    if (align == AlignType.left):
+        title_space = 0
+    elif (align == AlignType.right):
+        title_space = int((int(cols)*2 - len(title) - 1))
+    else:
+        title_space = int((int(cols)*2 - len(title)) / 2)
+
+
     with open(text_file, 'w') as f:
+
+        # Check if Print at TOP 
+        if (position == PositionType.top):
+            # Print the Title at top
+            for y in range(title_space):
+                f.write(" ")
+            f.write(title)
+            f.write('\n')
+
         for x in range(rows):
             for y in range(cols):
                 f.write(grid[x][y])
                 f.write(" ")
             f.write('\n')
 
-        # Loop over the words and add them to the SVG file
+        # Check if Print at TOP or BOTTOM
+        if (position == PositionType.bottom):
+            # Print the Title at bottom 
+            for y in range(title_space):
+                f.write(" ")
+            f.write(title)
+            f.write('\n')
+            f.write('\n')
+
+        # Loop over the words and add them to the text file
         for i, word in enumerate(words):
             row = i // num_columns
             col = i % num_columns
@@ -497,4 +566,3 @@ def print_text(words, grid, placed_grid, text_filename, test_solution_filename, 
                 f.write(" ")
             if (col == 2):
                 f.write("\n")
-

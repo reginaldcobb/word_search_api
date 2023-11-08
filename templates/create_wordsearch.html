@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>Word Search Generator</title>
+</head>
+<body>
+    <h1>Word Search Generator</h1>
+
+    <label for="align">Align:</label>
+    <select id="align" name="align">
+        <option value="LEFT">Left</option>
+        <option value="CENTER">Center</option>
+        <option value="RIGHT">Right</option>
+    </select><br>
+    
+    <label for="position">Position:</label>
+    <select id="position" name="position">
+        <option value="TOP">Top</option>
+        <option value="BOTTOM">Bottom</option>
+    </select><br>
+    
+    <label for="inputType">Input Type:</label>
+    <select id="inputType" name="input_type">
+        <option value="LIST">List</option>
+        <option value="FILE">File</option>
+    </select><br>
+
+    <label for="title">Puzzle Title:</label>
+    <input type="text" id="title" required><br>
+
+    <label for="rows">Rows:</label>
+    <input type="number" id="rows" required><br>
+
+    <label for="columns">Columns:</label>
+    <input type="number" id="columns" required><br>
+
+    <label for="wordList">Word List (comma-separated):</label>
+    <input type="text" id="wordList" required><br>
+
+    <button id="generateButton">Generate Word Search</button>
+
+    <div id="wordSearchOutput"></div>
+
+    <script>
+        document.getElementById('generateButton').addEventListener('click', function () {
+            const input_type = document.getElementById('input_type');
+            const title = {
+                align: document.getElementById('align').value,
+                position: document.getElementById('position').value,
+                text: document.getElementById('title').value
+            };
+            const rows = parseInt(document.getElementById('rows').value);
+            const columns = parseInt(document.getElementById('columns').value);
+            const wordList = document.getElementById('wordList').value.split(',');
+
+            const data = {
+                input_type,
+                title,
+                rows,
+                columns,
+                word_list: wordList
+            };
+
+            fetch('/create_wordsearch', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('wordSearchOutput').innerHTML = data.puzzle;
+            });
+        });
+    </script>
+</body>
+
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f5f5f5;
+        margin: 0;
+        padding: 0;
+    }
+    h1 {
+        text-align: center;
+        color: #333;
+    }
+    form {
+        width: 50%;
+        margin: 0 auto;
+        background-color: #fff;
+        padding: 20px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
+    }
+    label, input, select {
+        display: block;
+        margin-bottom: 10px;
+    }
+    #generateButton {
+        background-color: #0074D9;
+        color: #fff;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+    }
+    #generateButton:hover {
+        background-color: #0056b3;
+    }
+    #wordSearchOutput {
+        margin-top: 20px;
+    }
+</style>
+</html>
