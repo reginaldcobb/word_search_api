@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SVG Display</title>
+</head>
+<body>
+    <h1>SVG Display</h1>
+
+    <!-- Replace "your_svg_file.svg" with the actual filename of your SVG file -->
+    <img src="{{ url_for('static', path='svg_out.svg') }}" alt="Puzzle Image">
+    <img src="{{ url_for('static', path='svg_out_solution.svg') }}" alt="Puzzle Solution Image">
+</body>
+</html>

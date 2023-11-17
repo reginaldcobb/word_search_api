@@ -9,6 +9,11 @@ from fastapi.staticfiles import StaticFiles
 
 from fastapi.templating import Jinja2Templates
 
+from pathlib import Path
+from typing import List
+
+from starlette.requests import Request
+
 from pydantic import BaseModel
 from typing import List
 
@@ -52,13 +57,23 @@ static_folder = "static"
 # Mount the static directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
+
+# Define the path to the static directory
+static_path = Path(__file__).parent / "static"
+
 # Check if the static folder exists, and create it if not
 # if not os.path.exists(static_folder):
 #     os.makedirs(static_folder)
 
-@app.get("/")
+@app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
+    # return templates.TemplateResponse("create_wordsearch_grid.html", {"request": request})
     return templates.TemplateResponse("create_wordsearch.html", {"request": request})
+
+
+@app.get("/svg", response_class=HTMLResponse)
+async def render_svg(request: Request):
+    return templates.TemplateResponse("svg_template.html", {"request": request})
 
 @app.get("/get_file_links")
 async def get_file_links():
@@ -154,13 +169,37 @@ async def create_wordsearch(data: WordSearchModel ):
     print_text(data.word_list, grids[0], grids[1], text_output_file,
             text_output_solution_file, data.row, data.column, data.title.text, data.title.align, data.title.position)
 
+    file_links = []
+
+    # Iterate through files in the "static" directory and generate hyperlinks
+    # for file_path in static_path.iterdir():
+    #     if file_path.is_file():
+    #         file_name = file_path.stem  # Use the file name without extension as the hyperlink name
+    #         print("file_name=", file_name)
+    #         file_links.append({
+    #             "filename": file_name,
+    #             "url": f"/static/{file_path.name}"
+    #         })
+    # print("file_links=", file_links)
     return {
         "input": data.input,
         "word_list": data.word_list,
         # "file_name": words_file.filename,
+        # "puzzle": grids[0],
+        # "puzzle": svg_output_file,
+        "puzzle": "This is Text passed from FastAPI on return",
         "row": data.row,
         "column": data.column,
         "title": data.title.model_dump() if data.title else None,
+        "svg1": svg_output_file,
+        "svg2": svg_output_solution_file,
+        "return_svg_file":svg_output_file,
+        "return_svg_solution_file":svg_output_solution_file,
+        "return_text_file":text_output_file,
+        "return_text_solution_file":text_output_solution_file,
+        "return_docx_file":docx_output_file,
+        "return_docx_solution_file":docx_output_solution_file,
+        # "file_links": file_links
     }
 
 def generate_puzzle(words, rows, cols):
@@ -279,26 +318,25 @@ def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, row
         if (position == PositionType.top):
             match align:
                 case AlignType.left:
-                    x = 2
-                    y=0  
-                    print ("left", x, len(title))
+                    x = (1 * cell_size) - (cell_size/2)
+                    y = 0
+                    f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    for i in range(len(title)):
+                        f.write(f'\t<text x="{ x + (i * cell_size/2) }" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
                 case AlignType.middle:
-                    x = (width)/2  - ((len(title)-1)/2)
-                    # x=2
+                    x = (width/2 - ((len(title)/4)))
                     y=0
-                    print ("middle", x, len(title))
+                    f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    for i in range(len(title)):
+                        f.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black">{title[i]}</text>\n')
                 case AlignType.right:
-                    x = ((width)) - ((len(title)/2-1))
+                    x = (width - ((len(title)/2)))
                     y=0
-                    print ("right", x, (len(title)))
+                    f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    for i in range(len(title)):
+                        f.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black">{title[i]}</text>\n')
                 case _:
                     pass
-      
-            # write the title
-            # f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
-
-            # f.write(f'\t<text x="{x * (cell_size + cell_size / 2)}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight = "900">{title}</text>\n')
-            # f.write(f'\t<text x="{x * cell_size }" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight = "900">{title}</text>\n')
 
         for y in range(height):
             for x in range(width):
@@ -307,7 +345,10 @@ def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, row
                 f.write(
                     f'\t<text x="{x * cell_size + cell_size / 2}" y="{(y+1) * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black">{grid[y][x]}</text>\n')
 
-        # Loop over the words and add them to the SVG file
+    # print a blank line to the svg file
+        # f.write(f'\t<rect x="0" y="{(height+1) * cell_size}" width="{width * cell_size}" height="{cell_size}" fill-opacity="0" />\n')   
+        # f.write(f'\t<rect x="0" y="{(height+2) * cell_size}" width="{width * cell_size}" height="{cell_size}" fill-opacity="0" />\n')   
+        
         for i, word in enumerate(words):
             # Calculate the row and column for this word
             row = i // num_columns
@@ -315,7 +356,7 @@ def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, row
             f.write(f'\t<text x="{(col * (cell_size  + col_buffer)) + start_col_buffer}" y="{(row) * cell_size + cell_size / 2 + cell_size * cell_size }" text-anchor="middle" alignment-baseline="middle" fill="black" >{word}</text>\n')
 
         f.write('</svg>\n')
-
+        
     svg_solution_file = os.path.join(static_folder, svg_solution_filename)
 
     with open(svg_solution_file, "w") as solution:
@@ -323,21 +364,46 @@ def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, row
             # Make svg display area larger to accomodate words below the puzzle
             f'<svg xmlns="http://www.w3.org/2000/svg" width="{width * cell_size*2}" height="{height * cell_size*2}">\n')
         
+        if (position == PositionType.top):
+            match align:
+                case AlignType.left:
+                    x = (1 * cell_size) - (cell_size/2)
+                    y = 0
+                    solution.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    for i in range(len(title)):
+                        solution.write(f'\t<text x="{ x + (i * cell_size/2) }" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
+                case AlignType.middle:
+                    x = (width/2 - ((len(title)/4)))
+                    y=0
+                    solution.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    for i in range(len(title)):
+                        solution.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black">{title[i]}</text>\n')
+                case AlignType.right:
+                    x = (width - ((len(title)/2)))
+                    y=0
+                    solution.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    for i in range(len(title)):
+                        solution.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black">{title[i]}</text>\n')
+                case _:
+                    pass
+
+
+        
         for y in range(height):
             for x in range(width):
                 if (placed_grid[y][x]) == '%':
                     # Not a word so print black
                     solution.write(
-                        f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                        f'\t<rect x="{x * cell_size}" y="{(y+1) * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
                     solution.write(
-                        f'\t<text x="{x * cell_size + cell_size / 2}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black">{grid[y][x]}</text>\n')
+                        f'\t<text x="{x * cell_size + cell_size / 2}" y="{(y+1) * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black">{grid[y][x]}</text>\n')
 
                 else:
                     # a placed word so print Red
                     solution.write(
-                        f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                        f'\t<rect x="{x * cell_size}" y="{(y+1) * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
                     solution.write(
-                        f'\t<text x="{x * cell_size + cell_size / 2}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="blue" font-weight = "900">{grid[y][x]}</text>\n')
+                        f'\t<text x="{x * cell_size + cell_size / 2}" y="{(y+1) * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="blue" font-weight = "900">{grid[y][x]}</text>\n')
 
         # Loop over the words and add them to the SVG file
         for i, word in enumerate(words):
@@ -372,9 +438,9 @@ def print_docx(words, grid, placed_grid, docx_filename, docx_filename_solution, 
     if (align == AlignType.left):
         title_space = 0
     elif (align == AlignType.right):
-        title_space = int((int(height)*2 - len(title) - 1))
+        title_space = int((int(width)*2 - len(title) - 1))
     else:
-        title_space = int((int(height)*2 - len(title)) / 2)
+        title_space = int((int(width)*2 - len(title)) / 2)
 
     # Check if Print at TOP or BOTTOM
     if (position == PositionType.top):

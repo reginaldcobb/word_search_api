@@ -11,7 +11,7 @@
     <label for="align">Align:</label>
     <select id="align" name="align">
         <option value="LEFT">Left</option>
-        <option value="CENTER">Center</option>
+        <option value="MIDDLE">Middle</option>
         <option value="RIGHT">Right</option>
     </select><br>
     
@@ -43,6 +43,22 @@
 
     <div id="wordSearchOutput"></div>
 
+    <div id="svgContainer">
+        <!-- <h1>SVG Display</h1> -->
+        <!-- Replace "your_svg_file.svg" with the actual filename of your SVG file -->
+        <img src="{{ url_for('static', path='svg_out.svg') }}" alt="Puzzle Image">
+        <img src="{{ url_for('static', path='svg_out_solution.svg') }}" alt="Puzzle Solution Image">
+    
+    </div>
+
+        <p><a href="{{  url_for('static', path='svg_out.svg') }}" download >Word Search Puzzle File - SVG File</a></p>
+        <p><a href="{{  url_for('static', path='svg_out_solution.svg') }}" download >Word Search Puzzle File - SVG Solution File</a></p>
+
+        <p><a href="{{  url_for('static', path='text_out.txt') }}" download >Word Search Puzzle File - Text Format</a></p> 
+        <p><a href="{{  url_for('static', path='text_out_solution.txt') }}" download >Word Search Solution File - Text Format</a></p>
+
+        <p><a href="{{  url_for('static', path='docx-out.docx') }}" download >Word Search Puzzle File - Word Format</a></p>
+        <p><a href="{{  url_for('static', path='docx-out_solution.docx') }}" download >Word Search Puzzle File - Word Format</a></p>
     <script>
         document.getElementById('generateButton').addEventListener('click', function () {
             const input_type = document.getElementById('input_type');
@@ -73,6 +89,16 @@
             .then(response => response.json())
             .then(data => {
                 document.getElementById('wordSearchOutput').innerHTML = data.puzzle;
+                // Display SVG file in the HTML div
+                const svgImage = document.createElement('img');
+                svgImage.src = `data:image/svg+xml;base64,${btoa(data.svg1)}`;
+                svgImage.alt = 'Generated Word Search SVG';
+                document.getElementById('svgContainer').innerHTML = ''; // Clear previous content
+                document.getElementById('svgContainer').appendChild(svgImage);
+
+            // Log the entire data for debugging purposes
+            console.log(data);
+
             });
         });
     </script>
