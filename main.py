@@ -18,6 +18,7 @@ from pydantic import BaseModel
 from typing import List
 
 # import svgwrite
+import svgwrite
 from svgutils.compose import *
 from svgutils.transform import fromstring
 
@@ -246,7 +247,9 @@ def generate_puzzle(words, rows, cols):
                 col = random.randint(0, cols - len(word))
                 if all(grid[row][col + i] in ['-', word[i]] for i in range(len(word))):
                     if horz_order != "FORWARD":
-                        placed_word = reversed(word)
+                        # ignore reversing for now
+                        # placed_word = reversed(word)
+                        placed_word = word
                     else:
                         placed_word = word
                     for i, letter in enumerate(placed_word):
@@ -260,7 +263,9 @@ def generate_puzzle(words, rows, cols):
                 col = random.randint(0, cols-1)
                 if all(grid[row + i][col] in ['-', word[i]] for i in range(len(word))):
                     if vert_order != "FORWARD":
-                        placed_word = reversed(word)
+                        # ignore reversing for now
+                        # placed_word = reversed(word)
+                        placed_word = word
                     else:
                         placed_word = word
                     for i, letter in enumerate(placed_word):
@@ -280,7 +285,9 @@ def generate_puzzle(words, rows, cols):
 
                 if all(grid[row + drow*i][col + dcol*i] in ['-', word[i]] for i in range(len(word))):
                     if order == "FORWARD":
-                        placed_word = reversed(word)
+                        # ignore reversing for now
+                        # placed_word = reversed(word)
+                        placed_word = word
                     else:
                         placed_word = word
                     for i, letter in enumerate(placed_word):
@@ -422,16 +429,12 @@ def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, row
             for x in range(width):
                 if (placed_grid[y][x]) == '%':
                     # Not a word so print black
-                    f.write(
-                        f'\t<rect x="{x * cell_size}" y="{(y+top_title_buffer) * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
-                    f.write(
-                        f'\t<text x="{x * cell_size + cell_size / 2}" y="{(y+top_title_buffer) * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black">{grid[y][x]}</text>\n')
+                    f.write(f'\t<rect x="{x * cell_size}" y="{(y+top_title_buffer) * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    f.write(f'\t<text x="{x * cell_size + cell_size / 2}" y="{(y+top_title_buffer) * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="lightgrey">{grid[y][x]}</text>\n')
                 else:
-                    # a placed word so print Red
-                    f.write(
-                        f'\t<rect x="{x * cell_size}" y="{(y+top_title_buffer) * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
-                    f.write(
-                        f'\t<text x="{x * cell_size + cell_size / 2}" y="{(y+top_title_buffer) * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="blue" font-weight = "900">{grid[y][x]}</text>\n')
+                    # Print solution with formatting
+                    f.write(f'\t<rect x="{x * cell_size}" y="{(y+top_title_buffer) * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    f.write(f'\t<text x="{x * cell_size + cell_size / 2}" y="{(y+top_title_buffer) * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="blue" font-weight = "900">{grid[y][x]}</text>\n')
 
         if (position == PositionType.bottom):
             y = y + title_buffer
