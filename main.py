@@ -2,6 +2,7 @@ from enum import Enum
 import os
 import random
 import json
+import argparse
 
 from fastapi import FastAPI, File, UploadFile, Request, Form
 from fastapi.responses import FileResponse, HTMLResponse
@@ -27,6 +28,21 @@ from docx.shared import RGBColor
 from docx.shared import Pt
 
 app = FastAPI()
+
+
+# Initialize the argument parser
+parser = argparse.ArgumentParser(description="FastAPI script with command line arguments")
+
+# Define the command line arguments
+parser.add_argument("--local",  action="store_true", help="Enter True if running locally, False if running on web")
+parser.add_argument("--filename_base", type=str, default="default_filename_base", help="Description for filename_base")
+parser.add_argument("--word_file", type=str, default="default_word_file", help="Description for word_file")
+parser.add_argument("--rows", type=int, default=20, help="Description for rows")
+parser.add_argument("--cols", type=int, default=20, help="Description for cols")
+
+# Parse the command line arguments
+args, _ = parser.parse_known_args()
+
 
 class AlignType(str, Enum):
     left = "LEFT"
@@ -58,13 +74,83 @@ static_folder = "static"
 # Mount the static directory
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
-
 # Define the path to the static directory
 static_path = Path(__file__).parent / "static"
 
 # Check if the static folder exists, and create it if not
 # if not os.path.exists(static_folder):
 #     os.makedirs(static_folder)
+
+# Example function that uses the arguments
+def example_function(directory_name, arguments):
+    # Check if the directory exists
+    if not os.path.exists(directory_name):
+        # If it doesn't exist, create the directory
+        os.makedirs(directory_name)
+        print(f"Directory '{directory_name}' created successfully.")
+    else:
+        print(f"Directory '{directory_name}' already exists.")
+
+    print(f"\nInside example_function:")
+    print(f"local: {arguments.local}")
+    print(f"filename_base: {arguments.filename_base}")
+    print(f"word_file: {arguments.word_file}")
+    print(f"rows: {arguments.rows}")
+    print(f"cols: {arguments.cols}")
+
+    # Set config variables
+    if arguments.filename_base != "default_filename_base":
+        docx_output_file = arguments.filename_base +"_doc.docx"
+        docx_output_solution_file = arguments.filename_base +"_doc_solution.docx"
+        svg_output_file = arguments.filename_base +"_svg.svg"
+        svg_output_solution_file = arguments.filename_base +"_svg_solution.svg"
+        text_output_file = arguments.filename_base +"_txt.txt"
+        text_output_solution_file = arguments.filename_base +"_txt_solution.txt"
+    else:
+        docx_output_file = "docx-out.docx"
+        docx_output_solution_file = "docx-out_solution.docx"
+        svg_output_file = "svg_out.svg"
+        svg_output_solution_file = "svg_out_solution.svg"
+        text_output_file = "text_out.txt"
+        text_output_solution_file = "text_out_solution.txt"
+
+
+    # # Set config variables
+    # docx_output_file = "docx-out.docx"
+    # docx_output_solution_file = "docx-out_solution.docx"
+    # svg_output_file = "svg_out.svg"
+    # svg_output_solution_file = "svg_out_solution.svg"
+    # text_output_file = "text_out.txt"
+    # text_output_solution_file = "text_out_solution.txt"
+    font_type = "Courier"
+    font_size = "15"
+    font_red_value = "0x00"
+    font_green_value = "0x00"
+    font_blue_value = "0x00"
+    display_title = "TRUE"
+
+    title_align = AlignType.left
+    title_position = PositionType.top
+    # title_text = "Word Search"
+    title_text = ""
+    word_list = ["CHEESE","BACON","TACOS","SUSHI","PIZZA","DONUTS","BURGER","FRIES","SALAD","GRAPES","YOGURT","PASTA","SANDWICH","SHRIMP","AVOCADO","NACHOS","PANCAKE","CROISSANT","WAFFLE","BAGEL"]
+    print("word_list=", word_list)
+
+    # Generate the grids
+    # grids = generate_puzzle(data.word_list, data.row, data.column, data.title.text, data.title.align, data.title.position)
+    grids = generate_puzzle(word_list, arguments.rows, arguments.cols)
+    
+    print_docx(word_list, grids[0], grids[1], docx_output_file, docx_output_solution_file,  arguments.rows, arguments.cols, title_text,
+           title_align, title_position, font_type, font_size, font_red_value, font_green_value, font_blue_value, display_title)
+
+    # Print the SVG version of the puzzles
+    print_svg(word_list, grids[0], grids[1], svg_output_file, svg_output_solution_file, arguments.rows, arguments.cols, title_text, title_align, title_position, display_title)
+
+    # Print the Text version of the puzzles
+    print_text(word_list, grids[0], grids[1], text_output_file,
+            text_output_solution_file, arguments.rows, arguments.cols, title_text, title_align, title_position, display_title)
+
+
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -141,7 +227,7 @@ async def get_wordsearch():
     return responses
 
 @app.post("/create_wordsearch")
-async def create_wordsearch(data: WordSearchModel ):    
+async def create_wordsearch(data: WordSearchModel, arguments ):    
 
     # Set config variables
     docx_output_file = "docx-out.docx"
@@ -682,3 +768,19 @@ def print_text(words, grid, placed_grid, text_filename, test_solution_filename, 
                 f.write(" ")
             if (col == 2):
                 f.write("\n")
+
+
+# Run the FastAPI app
+if __name__ == "__main__":
+    import uvicorn
+    print("args=", args)
+    if args.local:
+        # Specify the directory name you want to create
+        directory_name = "new_directory"    
+
+        example_function(directory_name, args)    
+
+        # Call the function to create the directory
+        # create_directory(directory_name)
+    else:
+        uvicorn.run(app, host="127.0.0.1", port=8000)
