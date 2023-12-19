@@ -1,8 +1,10 @@
 from enum import Enum
 import os
+import csv
 import random
 import json
 import argparse
+import pandas as pd
 
 from fastapi import FastAPI, File, UploadFile, Request, Form
 from fastapi.responses import FileResponse, HTMLResponse
@@ -39,10 +41,11 @@ parser.add_argument("--filename_base", type=str, default="default_filename_base"
 parser.add_argument("--word_file", type=str, default="default_word_file", help="Description for word_file")
 parser.add_argument("--rows", type=int, default=20, help="Description for rows")
 parser.add_argument("--cols", type=int, default=20, help="Description for cols")
+parser.add_argument("--excel_file_path", type=str, default="excel_path", help="Path to the file containing the puzzles in tabs")
+parser.add_argument("--output_directory", type=str, default="output_directory", help="Output directory for the generated puzzles")
 
 # Parse the command line arguments
 args, _ = parser.parse_known_args()
-
 
 class AlignType(str, Enum):
     left = "LEFT"
@@ -69,34 +72,55 @@ class WordSearchModel(BaseModel):
 # Create a Jinja2Templates instance for rendering HTML templates
 templates = Jinja2Templates(directory="templates")
 
+# Define Static Files Directory
 static_folder = "static"
 
 # Mount the static directory
-app.mount("/static", StaticFiles(directory="static"), name="static")
+# app.mount("/static", StaticFiles(directory="static"), name="static")
 
 # Define the path to the static directory
-static_path = Path(__file__).parent / "static"
+# static_path = Path(__file__).parent / "static"
 
 # Check if the static folder exists, and create it if not
 # if not os.path.exists(static_folder):
 #     os.makedirs(static_folder)
 
 # Example function that uses the arguments
-def example_function(directory_name, arguments):
+def build_wordsearch_folder(arguments):
     # Check if the directory exists
-    if not os.path.exists(directory_name):
-        # If it doesn't exist, create the directory
-        os.makedirs(directory_name)
-        print(f"Directory '{directory_name}' created successfully.")
-    else:
-        print(f"Directory '{directory_name}' already exists.")
 
-    print(f"\nInside example_function:")
-    print(f"local: {arguments.local}")
-    print(f"filename_base: {arguments.filename_base}")
-    print(f"word_file: {arguments.word_file}")
-    print(f"rows: {arguments.rows}")
-    print(f"cols: {arguments.cols}")
+    # Specify the subdirectory name
+    folder = arguments.filename_base
+
+    # Redefine Static Files Directory
+    # folder = subdirectory_name
+
+    #  Get current working directory
+    current_directory = os.getcwd()
+
+    # Construct the full path to the subdirectory
+    subdirectory_path = os.path.join(current_directory, folder)
+
+    # Check if the subdirectory exists
+    if not os.path.exists(subdirectory_path):
+        # If it doesn't exist, create the subdirectory and its parent directories
+        os.makedirs(subdirectory_path)
+        print(f"Subdirectory '{subdirectory_path}' created successfully.")
+    else:
+        print(f"Subdirectory '{subdirectory_path}' already exists.")
+        
+    # print(f"\nInside example_function:")
+    # print(f"local: {arguments.local}")
+    # print(f"filename_base: {arguments.filename_base}")
+    # print(f"word_file: {arguments.word_file}")
+    # print(f"rows: {arguments.rows}")
+    # print(f"cols: {arguments.cols}")
+    # print(f"excel_file_path: {arguments.excel_file_path}")
+    # print(f"output_directory: {arguments.output_directory}")
+    # print(f"current_directory: {current_directory}")
+    # print(f"subdirectory_name: {subdirectory_name}")
+
+
 
     # Set config variables
     if arguments.filename_base != "default_filename_base":
@@ -134,21 +158,47 @@ def example_function(directory_name, arguments):
     # title_text = "Word Search"
     title_text = ""
     word_list = ["CHEESE","BACON","TACOS","SUSHI","PIZZA","DONUTS","BURGER","FRIES","SALAD","GRAPES","YOGURT","PASTA","SANDWICH","SHRIMP","AVOCADO","NACHOS","PANCAKE","CROISSANT","WAFFLE","BAGEL"]
-    print("word_list=", word_list)
+    # print("word_list=", word_list)
+
+    # Specify the path to your CSV file
+    csv_file_name = arguments.filename_base +".csv"
+
+    # Construct the full path to the CSV file
+    csv_file_path = os.path.join(folder, csv_file_name)
+    print("csv_file_path=", csv_file_path)
+
+    # Open the CSV file in read mode
+    with open(csv_file_path, 'r') as csv_file:
+        # Use the csv.reader to read the values from the CSV file
+        csv_reader = csv.reader(csv_file)
+        
+        # Since there is only one row, use next() to get that row
+        row_values = next(csv_reader)
+        
+    # Convert all strings in the list to uppercase
+    row_values_uppercase = [value.upper() for value in row_values]
+
+
+    print("row_values UPPER", row_values_uppercase)
+    print("row count UPPER=", len(row_values_uppercase))
+
+    file_word_list = []
+
 
     # Generate the grids
     # grids = generate_puzzle(data.word_list, data.row, data.column, data.title.text, data.title.align, data.title.position)
     grids = generate_puzzle(word_list, arguments.rows, arguments.cols)
     
-    print_docx(word_list, grids[0], grids[1], docx_output_file, docx_output_solution_file,  arguments.rows, arguments.cols, title_text,
+    print_docx(folder, word_list, grids[0], grids[1], docx_output_file, docx_output_solution_file,  arguments.rows, arguments.cols, title_text,
            title_align, title_position, font_type, font_size, font_red_value, font_green_value, font_blue_value, display_title)
 
     # Print the SVG version of the puzzles
-    print_svg(word_list, grids[0], grids[1], svg_output_file, svg_output_solution_file, arguments.rows, arguments.cols, title_text, title_align, title_position, display_title)
+    print_svg(folder, word_list, grids[0], grids[1], svg_output_file, svg_output_solution_file, arguments.rows, arguments.cols, title_text, title_align, title_position, display_title)
 
     # Print the Text version of the puzzles
-    print_text(word_list, grids[0], grids[1], text_output_file,
+    print_text(folder, word_list, grids[0], grids[1], text_output_file,
             text_output_solution_file, arguments.rows, arguments.cols, title_text, title_align, title_position, display_title)
+
 
 
 
@@ -390,7 +440,7 @@ def generate_puzzle(words, rows, cols):
 
     return [grid, placed_grid]
 
-def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, rows, cols, title, align, position, display_title):
+def print_svg(folder, words, grid, placed_grid, svg_filename, svg_solution_filename, rows, cols, title, align, position, display_title):
 
     width = len(grid[0])
     height = len(grid)
@@ -406,7 +456,7 @@ def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, row
     col_buffer = (width*width)/3 - cell_size
     start_col_buffer = cell_size * 3
     
-    svg_file = os.path.join(static_folder, svg_filename)
+    svg_file = os.path.join(folder, svg_filename)
     with open(svg_file, "w") as f:
         f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width * cell_size*2}" height="{height * cell_size *2}">\n')
         if (display_title == "TRUE"):
@@ -477,7 +527,7 @@ def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, row
         # Close the svg file
         f.write('</svg>\n')
         
-    svg_solution_file = os.path.join(static_folder, svg_solution_filename)
+    svg_solution_file = os.path.join(folder, svg_solution_filename)
     with open(svg_solution_file, "w") as f:
         f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width * cell_size*2}" height="{height * cell_size*2}">\n')
 
@@ -553,7 +603,7 @@ def print_svg(words, grid, placed_grid, svg_filename, svg_solution_filename, row
         f.write('</svg>\n')
     return [svg_file, svg_solution_file]
 
-def print_docx(words, grid, placed_grid, docx_filename, docx_filename_solution, width, height, title, align, position,  font_type, font_size, red, green, blue, display_title):
+def print_docx(folder, words, grid, placed_grid, docx_filename, docx_filename_solution, width, height, title, align, position,  font_type, font_size, red, green, blue, display_title):
 
     mydoc = Document()
     mydoc_docx = mydoc.add_paragraph()
@@ -620,7 +670,8 @@ def print_docx(words, grid, placed_grid, docx_filename, docx_filename_solution, 
         if (col == 2):
             doc = mydoc_docx.add_run("\n")
 
-    filename = os.path.join(static_folder, docx_filename)
+    # filename = os.path.join(static_folder, docx_filename)
+    filename = os.path.join(folder, docx_filename)
     mydoc.save(filename)
 
     # Print the Solution Puzzle
@@ -682,10 +733,11 @@ def print_docx(words, grid, placed_grid, docx_filename, docx_filename_solution, 
             doc = mydoc_docx.add_run("\n")
 
     # get the filename only
-    filename = os.path.join(static_folder, docx_filename_solution)
+    # filename = os.path.join(static_folder, docx_filename_solution)
+    filename = os.path.join(folder, docx_filename_solution)
     mydoc_solution.save(filename)
 
-def print_text(words, grid, placed_grid, text_filename, test_solution_filename, rows, cols, title, align, position, display_title):
+def print_text(folder, words, grid, placed_grid, text_filename, test_solution_filename, rows, cols, title, align, position, display_title):
 
     words.sort()
     longest_word = ''
@@ -694,10 +746,10 @@ def print_text(words, grid, placed_grid, text_filename, test_solution_filename, 
             longest_word = word
 
     # create text filie
-    text_file = os.path.join(static_folder, text_filename)
+    text_file = os.path.join(folder, text_filename)
 
     # create text file for solution
-    text_solution_file = os.path.join(static_folder, test_solution_filename)
+    text_solution_file = os.path.join(folder, test_solution_filename)
 
     # Define the number of columns and rows
     num_columns = 3
@@ -778,7 +830,7 @@ if __name__ == "__main__":
         # Specify the directory name you want to create
         directory_name = "new_directory"    
 
-        example_function(directory_name, args)    
+        build_wordsearch_folder(args)    
 
         # Call the function to create the directory
         # create_directory(directory_name)
