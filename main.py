@@ -43,6 +43,7 @@ parser.add_argument("--rows", type=int, default=20, help="Description for rows")
 parser.add_argument("--cols", type=int, default=20, help="Description for cols")
 parser.add_argument("--excel_file_path", type=str, default="excel_path", help="Path to the file containing the puzzles in tabs")
 parser.add_argument("--output_directory", type=str, default="output_directory", help="Output directory for the generated puzzles")
+parser.add_argument("--solution_words", action="store_true", help="Enter True if words are to be printed below solution puzzle, False otherwise")
 
 # Parse the command line arguments
 args, _ = parser.parse_known_args()
@@ -75,17 +76,7 @@ templates = Jinja2Templates(directory="templates")
 # Define Static Files Directory
 static_folder = "static"
 
-# Mount the static directory
-# app.mount("/static", StaticFiles(directory="static"), name="static")
-
-# Define the path to the static directory
-# static_path = Path(__file__).parent / "static"
-
-# Check if the static folder exists, and create it if not
-# if not os.path.exists(static_folder):
-#     os.makedirs(static_folder)
-
-# Example function that uses the arguments
+# Example function that uses the local arguments
 def build_wordsearch_folder(arguments):
     # Check if the directory exists
 
@@ -97,30 +88,6 @@ def build_wordsearch_folder(arguments):
 
     #  Get current working directory
     current_directory = os.getcwd()
-
-    # Construct the full path to the subdirectory
-    subdirectory_path = os.path.join(current_directory, folder)
-
-    # Check if the subdirectory exists
-    if not os.path.exists(subdirectory_path):
-        # If it doesn't exist, create the subdirectory and its parent directories
-        os.makedirs(subdirectory_path)
-        print(f"Subdirectory '{subdirectory_path}' created successfully.")
-    else:
-        print(f"Subdirectory '{subdirectory_path}' already exists.")
-        
-    # print(f"\nInside example_function:")
-    # print(f"local: {arguments.local}")
-    # print(f"filename_base: {arguments.filename_base}")
-    # print(f"word_file: {arguments.word_file}")
-    # print(f"rows: {arguments.rows}")
-    # print(f"cols: {arguments.cols}")
-    # print(f"excel_file_path: {arguments.excel_file_path}")
-    # print(f"output_directory: {arguments.output_directory}")
-    # print(f"current_directory: {current_directory}")
-    # print(f"subdirectory_name: {subdirectory_name}")
-
-
 
     # Set config variables
     if arguments.filename_base != "default_filename_base":
@@ -138,15 +105,8 @@ def build_wordsearch_folder(arguments):
         text_output_file = "text_out.txt"
         text_output_solution_file = "text_out_solution.txt"
 
-
-    # # Set config variables
-    # docx_output_file = "docx-out.docx"
-    # docx_output_solution_file = "docx-out_solution.docx"
-    # svg_output_file = "svg_out.svg"
-    # svg_output_solution_file = "svg_out_solution.svg"
-    # text_output_file = "text_out.txt"
-    # text_output_solution_file = "text_out_solution.txt"
     font_type = "Courier"
+    # font_type = "Copperplate Gothic Bold"  
     font_size = "15"
     font_red_value = "0x00"
     font_green_value = "0x00"
@@ -157,18 +117,15 @@ def build_wordsearch_folder(arguments):
     title_position = PositionType.top
     # title_text = "Word Search"
     title_text = ""
-    word_list = ["CHEESE","BACON","TACOS","SUSHI","PIZZA","DONUTS","BURGER","FRIES","SALAD","GRAPES","YOGURT","PASTA","SANDWICH","SHRIMP","AVOCADO","NACHOS","PANCAKE","CROISSANT","WAFFLE","BAGEL"]
-    # print("word_list=", word_list)
 
     # Specify the path to your CSV file
     csv_file_name = arguments.filename_base +".csv"
 
     # Construct the full path to the CSV file
     csv_file_path = os.path.join(folder, csv_file_name)
-    print("csv_file_path=", csv_file_path)
 
     # Open the CSV file in read mode
-    with open(csv_file_path, 'r') as csv_file:
+    with open(csv_file_path, 'r', encoding='utf-8') as csv_file:
         # Use the csv.reader to read the values from the CSV file
         csv_reader = csv.reader(csv_file)
         
@@ -178,29 +135,29 @@ def build_wordsearch_folder(arguments):
     # Convert all strings in the list to uppercase
     row_values_uppercase = [value.upper() for value in row_values]
 
+    # Remove blanks and non-alphabetic characters from each word
+    cleaned_row_values = [''.join(filter(str.isalpha, word)) for word in row_values_uppercase]
 
-    print("row_values UPPER", row_values_uppercase)
-    print("row count UPPER=", len(row_values_uppercase))
-
-    file_word_list = []
-
+    # Remove empty strings resulting from removing non-alphabetic characters
+    cleaned_row_values = list(filter(None, cleaned_row_values))
+    
+    word_list = cleaned_row_values
 
     # Generate the grids
     # grids = generate_puzzle(data.word_list, data.row, data.column, data.title.text, data.title.align, data.title.position)
     grids = generate_puzzle(word_list, arguments.rows, arguments.cols)
     
-    print_docx(folder, word_list, grids[0], grids[1], docx_output_file, docx_output_solution_file,  arguments.rows, arguments.cols, title_text,
+    print_docx(folder, word_list, row_values_uppercase, grids[0], grids[1], docx_output_file, docx_output_solution_file,  arguments.rows, arguments.cols, title_text,
            title_align, title_position, font_type, font_size, font_red_value, font_green_value, font_blue_value, display_title)
 
     # Print the SVG version of the puzzles
-    print_svg(folder, word_list, grids[0], grids[1], svg_output_file, svg_output_solution_file, arguments.rows, arguments.cols, title_text, title_align, title_position, display_title)
+    print_svg(folder, word_list, row_values_uppercase, grids[0], grids[1], svg_output_file, svg_output_solution_file, arguments.rows, arguments.cols, title_text, title_align, title_position, display_title)
 
     # Print the Text version of the puzzles
-    print_text(folder, word_list, grids[0], grids[1], text_output_file,
+    print_text(folder, word_list, row_values_uppercase, grids[0], grids[1], text_output_file,
             text_output_solution_file, arguments.rows, arguments.cols, title_text, title_align, title_position, display_title)
 
-
-
+    print (arguments.filename_base, "is Complete")
 
 @app.get("/", response_class=HTMLResponse)
 async def index(request: Request):
@@ -287,6 +244,7 @@ async def create_wordsearch(data: WordSearchModel, arguments ):
     text_output_file = "text_out.txt"
     text_output_solution_file = "text_out_solution.txt"
     font_type = "Courier"
+    # font_type = "Copperplate Gothic Bold"  
     font_size = "15"
     font_red_value = "0x00"
     font_green_value = "0x00"
@@ -309,16 +267,6 @@ async def create_wordsearch(data: WordSearchModel, arguments ):
 
     file_links = []
 
-    # Iterate through files in the "static" directory and generate hyperlinks
-    # for file_path in static_path.iterdir():
-    #     if file_path.is_file():
-    #         file_name = file_path.stem  # Use the file name without extension as the hyperlink name
-    #         print("file_name=", file_name)
-    #         file_links.append({
-    #             "filename": file_name,
-    #             "url": f"/static/{file_path.name}"
-    #         })
-    # print("file_links=", file_links)
     return {
         "input": data.input,
         "word_list": data.word_list,
@@ -440,7 +388,7 @@ def generate_puzzle(words, rows, cols):
 
     return [grid, placed_grid]
 
-def print_svg(folder, words, grid, placed_grid, svg_filename, svg_solution_filename, rows, cols, title, align, position, display_title):
+def print_svg(folder, words, word_display, grid, placed_grid, svg_filename, svg_solution_filename, rows, cols, title, align, position, display_title):
 
     width = len(grid[0])
     height = len(grid)
@@ -450,15 +398,25 @@ def print_svg(folder, words, grid, placed_grid, svg_filename, svg_solution_filen
 
     # sort the words
     words.sort()
+    word_display.sort()
 
     # Define the number of columns and rows for printing the search words
-    num_columns = 3
-    col_buffer = (width*width)/3 - cell_size
-    start_col_buffer = cell_size * 3
-    
+    num_columns = 2
+    # col_buffer = (width*width)/3 - cell_size
+    col_buffer = (width*width)/2 - cell_size
+    # start_col_buffer = cell_size * 3
+    start_col_buffer = cell_size * 2
+
+    svg_content = """
+    <style>
+        @import url('https://fonts.googleapis.com/css?family=Copperplate+Gothic+Bold');
+    </style>
+    """    
     svg_file = os.path.join(folder, svg_filename)
     with open(svg_file, "w") as f:
         f.write(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width * cell_size*2}" height="{height * cell_size *2}">\n')
+        f.write(svg_content)
+
         if (display_title == "TRUE"):
             title_buffer = 1
             title_row = 0
@@ -469,21 +427,21 @@ def print_svg(folder, words, grid, placed_grid, svg_filename, svg_solution_filen
                     case AlignType.left:
                         x = ( cell_size) - (cell_size/2)
                         y = title_row
-                        f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                        f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" font-family="Copperplate Gothic Bold"   width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
                         for i in range(len(title)):
-                            f.write(f'\t<text x="{ x + (i * cell_size/2) }" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
+                            f.write(f'\t<text x="{ x + (i * cell_size/2) }" y="{y * cell_size + cell_size / 2}" font-family="Copperplate Gothic Bold"   text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
                     case AlignType.middle:
                         x = (width/2 - ((len(title)/4)))
                         y=title_row
-                        f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                        f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" font-family="Copperplate Gothic Bold"   width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
                         for i in range(len(title)):
-                            f.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
+                            f.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" font-family="Copperplate Gothic Bold"   text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
                     case AlignType.right:
                         x = (width - ((len(title)/2)))
                         y=title_row
-                        f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                        f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" font-family="Copperplate Gothic Bold"   width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
                         for i in range(len(title)):
-                            f.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
+                            f.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" font-family="Copperplate Gothic Bold"   text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
                     case _:
                         pass
         else:
@@ -492,37 +450,37 @@ def print_svg(folder, words, grid, placed_grid, svg_filename, svg_solution_filen
         for y in range(height):
             for x in range(width):
                 f.write(
-                    f'\t<rect x="{x * cell_size}" y="{(y+top_title_buffer) * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    f'\t<rect x="{x * cell_size}" y="{(y+top_title_buffer) * cell_size}" font-family="Copperplate Gothic Bold"   width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
                 f.write(
-                    f'\t<text x="{x * cell_size + cell_size / 2}" y="{(y+top_title_buffer) * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black">{grid[y][x]}</text>\n')
+                    f'\t<text x="{x * cell_size + cell_size / 2}" y="{(y+top_title_buffer) * cell_size + cell_size / 2}"  font-family="Copperplate Gothic Bold"  text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{grid[y][x]}</text>\n')
 
         if (position == PositionType.bottom):
             y = y + title_buffer
             match align:
                 case AlignType.left:
                     x = ( cell_size) - (cell_size/2)
-                    f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" font-family="Copperplate Gothic Bold"   width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
                     for i in range(len(title)):
-                        f.write(f'\t<text x="{ x + (i * cell_size/2) }" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
+                        f.write(f'\t<text x="{ x + (i * cell_size/2) }" y="{y * cell_size + cell_size / 2}" font-family="Copperplate Gothic Bold"   text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
                 case AlignType.middle:
                     x = (width/2 - ((len(title)/4)))
-                    f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" font-family="Copperplate Gothic Bold"   width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
                     for i in range(len(title)):
-                        f.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
+                        f.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" font-family="Copperplate Gothic Bold"   text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
                 case AlignType.right:
                     x = (width - ((len(title)/2)))
-                    f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
+                    f.write(f'\t<rect x="{x * cell_size}" y="{y * cell_size}" font-family="Copperplate Gothic Bold"   width="{cell_size}" height="{cell_size}" fill-opacity="0" />\n')
                     for i in range(len(title)):
-                        f.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
+                        f.write(f'\t<text x="{ ((x*cell_size) + (i * cell_size/2))}" y="{y * cell_size + cell_size / 2}" font-family="Copperplate Gothic Bold"   text-anchor="middle" alignment-baseline="middle" fill="black" font-weight="bold">{title[i]}</text>\n')
                 case _:
                     pass
 
-        for i, word in enumerate(words):
+        for i, word in enumerate(word_display):
             # Calculate the row and column for this word
             row = i // num_columns
             col = i % num_columns
             # set gap for title by adding title_buffer to row if title is inculded
-            f.write(f'\t<text x="{(col * (cell_size  + col_buffer)) + start_col_buffer}" y="{(row+ title_buffer) * cell_size + cell_size / 2 + cell_size * cell_size }" text-anchor="middle" alignment-baseline="middle" fill="black" >{word}</text>\n')
+            f.write(f'\t<text x="{(col * (cell_size  + col_buffer)) + start_col_buffer}" y="{(row+ title_buffer) * cell_size + cell_size / 2 + cell_size * cell_size }" font-family="Copperplate Gothic Bold"    alignment-baseline="middle" fill="black"  font-weight="bold" >{word}</text>\n')
 
         # Close the svg file
         f.write('</svg>\n')
@@ -593,17 +551,19 @@ def print_svg(folder, words, grid, placed_grid, svg_filename, svg_solution_filen
                 case _:
                     pass
 
-        # Loop over the words and add them to the SVG file
-        for i, word in enumerate(words):
-            # Calculate the row and column for this word
-            row = i // num_columns
-            col = i % num_columns
-            f.write(
-                f'\t<text x="{(col * (cell_size  + col_buffer)) + start_col_buffer}" y="{(row+ title_buffer) * cell_size + cell_size / 2 + cell_size * cell_size }" text-anchor="middle" alignment-baseline="middle" fill="blue" font-weight = "900">{word}</text>\n')
+        if args.solution_words:
+            # Loop over the words and add them to the SVG file
+            for i, word in enumerate(word_display):
+                # Calculate the row and column for this word
+                row = i // num_columns
+                col = i % num_columns
+                f.write(
+                    f'\t<text x="{(col * (cell_size  + col_buffer)) + start_col_buffer}" y="{(row+ title_buffer) * cell_size + cell_size / 2 + cell_size * cell_size }" alignment-baseline="middle" fill="blue" font-weight = "900">{word}</text>\n')
         f.write('</svg>\n')
+
     return [svg_file, svg_solution_file]
 
-def print_docx(folder, words, grid, placed_grid, docx_filename, docx_filename_solution, width, height, title, align, position,  font_type, font_size, red, green, blue, display_title):
+def print_docx(folder, words, word_display, grid, placed_grid, docx_filename, docx_filename_solution, width, height, title, align, position,  font_type, font_size, red, green, blue, display_title):
 
     mydoc = Document()
     mydoc_docx = mydoc.add_paragraph()
@@ -614,6 +574,7 @@ def print_docx(folder, words, grid, placed_grid, docx_filename, docx_filename_so
     font.size = Pt(int(font_size))
 
     words.sort()
+    word_display.sort()
     longest_word = ''
 
     for word in words:
@@ -657,17 +618,21 @@ def print_docx(folder, words, grid, placed_grid, docx_filename, docx_filename_so
         doc = mydoc_docx.add_run("\n")
 
     # Define the number of columns and rows
-    num_columns = 3
-    col_buffer = 4
+    num_columns = 2
+    # col_buffer = 9
+    col_buffer = 25 - len(longest_word)
 
-    # Loop over the words and add them to the SVG file
-    for i, word in enumerate(words):
+
+    # Loop over the words and add them to the  file
+    for i, word in enumerate(word_display):
         row = i // num_columns
         col = i % num_columns
         doc = mydoc_docx.add_run(word)
         for j in range(col_buffer + (len(longest_word) - len(word))):
             doc = mydoc_docx.add_run(" ")
-        if (col == 2):
+        # if (col == 2):
+        if (col == (num_columns-1)):
+
             doc = mydoc_docx.add_run("\n")
 
     # filename = os.path.join(static_folder, docx_filename)
@@ -719,17 +684,19 @@ def print_docx(folder, words, grid, placed_grid, docx_filename, docx_filename_so
         doc = mydoc_docx.add_run("\n")
 
     # Define the number of columns and rows
-    num_columns = 3
-    col_buffer = 4
+    # num_columns = 2
+    # col_buffer = 9
 
-    # Loop over the words and add them to the SVG file
-    for i, word in enumerate(words):
+    # Loop over the words and add them to the  file
+    for i, word in enumerate(word_display):
         row = i // num_columns
         col = i % num_columns
         doc = mydoc_docx.add_run(word)
         for j in range(col_buffer + (len(longest_word) - len(word))):
             doc = mydoc_docx.add_run(" ")
-        if (col == 2):
+        # if (col == 2):
+        if (col == (num_columns-1)):
+
             doc = mydoc_docx.add_run("\n")
 
     # get the filename only
@@ -737,9 +704,11 @@ def print_docx(folder, words, grid, placed_grid, docx_filename, docx_filename_so
     filename = os.path.join(folder, docx_filename_solution)
     mydoc_solution.save(filename)
 
-def print_text(folder, words, grid, placed_grid, text_filename, test_solution_filename, rows, cols, title, align, position, display_title):
+def print_text(folder, words, word_display, grid, placed_grid, text_filename, test_solution_filename, rows, cols, title, align, position, display_title):
 
     words.sort()
+    word_display.sort()
+    
     longest_word = ''
     for word in words:
         if len(word) > len(longest_word):
@@ -752,8 +721,9 @@ def print_text(folder, words, grid, placed_grid, text_filename, test_solution_fi
     text_solution_file = os.path.join(folder, test_solution_filename)
 
     # Define the number of columns and rows
-    num_columns = 3
-    col_buffer = 4
+    # num_columns = 3
+    num_columns = 2
+    col_buffer = 25 - len(longest_word)
 
     # Check how title is aliigned
     if (align == AlignType.left):
@@ -790,13 +760,14 @@ def print_text(folder, words, grid, placed_grid, text_filename, test_solution_fi
             f.write('\n')
 
         # Loop over the words and add them to the text file
-        for i, word in enumerate(words):
+        for i, word in enumerate(word_display):
             row = i // num_columns
             col = i % num_columns
             f.write(word)
             for j in range(col_buffer + (len(longest_word) - len(word))):
                 f.write(" ")
-            if (col == 2):
+            # if (col == 2):
+            if (col == (num_columns-1)):
                 f.write("\n")
 
     with open(text_solution_file, 'w') as f:
@@ -812,20 +783,22 @@ def print_text(folder, words, grid, placed_grid, text_filename, test_solution_fi
             f.write('\n')
 
         # Loop over the words and add them to the SVG file
-        for i, word in enumerate(words):
+        for i, word in enumerate(word_display):
             row = i // num_columns
             col = i % num_columns
             f.write(word)
             for j in range(col_buffer + (len(longest_word) - len(word))):
                 f.write(" ")
-            if (col == 2):
+            # if (col == 2):
+            if (col == (num_columns-1)):
+
                 f.write("\n")
 
 
 # Run the FastAPI app
 if __name__ == "__main__":
     import uvicorn
-    print("args=", args)
+    # print("args=", args)
     if args.local:
         # Specify the directory name you want to create
         directory_name = "new_directory"    

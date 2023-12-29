@@ -139,3 +139,6 @@ FASTAPI
 
 pip install "fastapi[all]"     
 uvicorn main:app --reload   
+
+
+python main.py  --local  --filename_base geography_and_landforms-long_   --word_file my_word_file.txt --rows 20 
